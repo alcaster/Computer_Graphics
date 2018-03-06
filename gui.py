@@ -120,6 +120,10 @@ class WindowInter:
         command_with_arg = partial(self.function_filters_handler, self.inversion)
         button = tk.Button(panel5, text="Inversion", command=command_with_arg)
         button.pack()
+
+        command_with_arg = partial(self.function_filters_handler, self.gamma_corection)
+        button = tk.Button(panel5, text="Gamma", command=command_with_arg)
+        button.pack()
         panel5.pack(side='bottom')
 
     def create_readymade_filter_buttons(self):
@@ -139,9 +143,10 @@ class WindowInter:
     def show_buttons(self):
         self.create_readymade_filter_buttons()
         self.create_function_filters_buttons()
-        load_image = tk.Button(self.window, text="Change Image", command=self.load_image, width=10, height=2, padx=20,
-                               pady=20)
+
+        load_image = tk.Button(self.window, text="Change Image", command=self.load_image, width=10, height=2)
         load_image.pack()
+
         self.create_input("Offset")
         self.offset = tk.Entry(self.window, width=5)
         self.offset.pack()
@@ -154,8 +159,11 @@ class WindowInter:
         self.create_input("Brightness")
         self.brightness = tk.Entry(self.window, width=5)
         self.brightness.pack()
+        self.create_input("Gamma")
+        self.gamma = tk.Entry(self.window, width=5)
+        self.gamma.pack()
 
-        self.create_left_panel()
+        self.create_right_panel()
 
     def load_image(self):
         fname = filedialog.askopenfilename(initialdir='.')
@@ -164,7 +172,7 @@ class WindowInter:
         grayscale = np.asarray(raw)[:, :, 0]
         self.top = grayscale
 
-    def create_left_panel(self):
+    def create_right_panel(self):
         panel4 = tk.Label(self.window)
 
         canvas_width = 256
@@ -254,8 +262,8 @@ class WindowInter:
         return real_values
 
     def apply_canvas(self):
-        real_values = self.calculate_real_values()
         img = self.top.copy()
+        real_values = self.calculate_real_values()
         for i, j in itertools.product(range(img.shape[0]), range(img.shape[1])):
             img[i, j] = 255 - real_values[img[i, j]]
         return img
@@ -270,6 +278,11 @@ class WindowInter:
     def inversion(self):
         img = self.top.copy()
         return 255 - img
+
+    def gamma_corection(self):
+        img = self.top.copy()
+        gamma = float(self.gamma.get() or 0)
+        return 255 * (img / 255)**(1 / gamma)
 
     def set_contrast(self):
         img = self.top.copy()
@@ -294,7 +307,7 @@ class WindowInter:
         divisor = int(self.divisor.get() or 1)
         anchor = (self.anchor_col, self.anchor_row)
 
-        filtered = convolution(self.top, kernel, offset, divisor, anchor)
+        filtered = convolution(self.top, kernel, offset, divisor)
         raw = to_tkimage(self.top)
         filtered = to_tkimage(filtered)
 
@@ -313,7 +326,7 @@ class WindowInter:
         self.show_images(arr)
 
 
-def convolution(image, filter, offset, divisor, anchor=None):
+def convolution(image, filter, offset, divisor):
     height, width = filter.shape
     filter = filter.flatten()
     new_image = []
