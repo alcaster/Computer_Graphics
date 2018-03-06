@@ -6,52 +6,61 @@ import collections
 from functools import partial
 import itertools
 
-canvas_width = 256
-canvas_height = 256
 python_green = "#476042"
+path = "test_image_1.jpg"
 
 filters_database = {
-    'blur': np.array((
-        [1 / 25, 1 / 25, 1 / 25, 1 / 25, 1 / 25],
-        [1 / 25, 1 / 25, 1 / 25, 1 / 25, 1 / 25],
-        [1 / 25, 1 / 25, 1 / 25, 1 / 25, 1 / 25],
-        [1 / 25, 1 / 25, 1 / 25, 1 / 25, 1 / 25],
-        [1 / 25, 1 / 25, 1 / 25, 1 / 25, 1 / 25],
+    'Blur': np.array((
+        [1 / 9, 1 / 9, 1 / 9],
+        [1 / 9, 1 / 9, 1 / 9],
+        [1 / 9, 1 / 9, 1 / 9],
     ), dtype="float"),
-    'gaussian': np.array((
-        [0, 1 / 25, 2 / 25, 1 / 25, 0],
-        [1 / 25, 4 / 25, 8 / 25, 4 / 25, 1 / 25],
-        [2 / 25, 8 / 25, 16 / 25, 8 / 25, 2 / 25],
-        [1 / 25, 4 / 25, 8 / 25, 4 / 25, 1 / 25],
-        [0, 1 / 25, 2 / 25, 1 / 25, 0]), dtype="float"),
-    'sharpen1': np.array((
+    'Gaussian smoothing': np.array((
+        [0, 1 / 9, 0],
+        [1 / 9, 4 / 9, 1 / 9],
+        [0, 1 / 9, 0]
+    ), dtype="float"),
+    'Sharpen high pass a=1 b=5': np.array((
         [0, -1, 0],
         [-1, 5, -1],
         [0, -1, 0]), dtype="int"),
-    'sharpen2': np.array((
-        [-1, -1, -1],
-        [-1, 9, -1],
-        [-1, -1, -1]), dtype="int"),
-    'Hedgedetect(set offset=127)': np.array((
-        [0, -1, 0],
-        [0, 1, 0],
-        [0, 0, 0]), dtype="int"),
-    'Vedgedetect(set offset=127)': np.array((
+    'Vertical edge detect': np.array((
         [0, 0, 0],
         [-1, 1, 0],
         [0, 0, 0]), dtype="int"),
-    'Dedgedetect(set offset=127)': np.array((
+    'Horizontal edge detect': np.array((
+        [0, -1, 0],
+        [0, 1, 0],
+        [0, 0, 0]), dtype="int"),
+    'Diagonal edge detect': np.array((
         [-1, 0, 0],
         [0, 1, 0],
         [0, 0, 0]), dtype="int"),
-    'laplacian1': np.array((
+    'Laplacian1': np.array((
         [0, -1, 0],
         [-1, 4, -1],
         [0, -1, 0]), dtype="int"),
-    'laplacian2': np.array((
+    'Laplacian2': np.array((
         [-1, -1, -1],
         [-1, 8, -1],
         [-1, -1, -1]), dtype="int"),
+    'East emboss': np.array((
+        [-1, 0, 1],
+        [-1, 1, 1],
+        [-1, 0, 1]), dtype="int"),
+    'South east emboss': np.array((
+        [-1, -1, 0],
+        [-1, 1, 1],
+        [0, 1, 1]), dtype="int"),
+    'South emboss2': np.array((
+        [0, 0, 0],
+        [0, 3, 1],
+        [0, 1, 1]), dtype="int"),
+    'South emboss': np.array((
+        [-1, -1, -1],
+        [0, 1, 0],
+        [1, 1, 1]), dtype="int"),
+
 }
 
 
@@ -62,14 +71,15 @@ class WindowInter:
     contrast, brightness = None, None
     k_height, k_width, anchor_row, anchor_col = None, None, None, None
 
-    def __init__(self):
+    def __init__(self, path):
         self.window = tk.Tk()
         self.window.title("Computer Graphics 1")
         self.window.geometry("600x600")
-        self.window.configure(background='grey')
+        self.window.configure(background='white')
         self.panel3 = tk.Label(self.window)
         self.panel3.pack(side="left")
         self.points = {}
+        self.path = path
 
     def button_filter_handler(self, key):
         middle = int((len(filters_database[key][0]) - 1) / 2)
@@ -84,7 +94,7 @@ class WindowInter:
         window = tk.Tk()
         window.title("Computer Graphics 1")
         window.geometry("800x800")
-        window.configure(background='grey')
+        window.configure(background='white')
         raw = self.top.copy()
         raw = to_tkimage(raw)
         filtered = to_tkimage(method())
@@ -118,7 +128,7 @@ class WindowInter:
             command_with_arg = partial(self.button_filter_handler, key)
             button = tk.Button(panel5, text=key, command=command_with_arg)
             button.pack()
-        panel5.pack(side='right')
+        panel5.pack(side='left')
 
     def create_input(self, name):
         label = tk.StringVar()
@@ -149,6 +159,7 @@ class WindowInter:
 
     def load_image(self):
         fname = filedialog.askopenfilename(initialdir='.')
+        self.path = fname
         raw = resize_image(Image.open(fname))
         grayscale = np.asarray(raw)[:, :, 0]
         self.top = grayscale
@@ -156,26 +167,57 @@ class WindowInter:
     def create_left_panel(self):
         panel4 = tk.Label(self.window)
 
+        canvas_width = 256
+        canvas_height = 256
         w = Canvas(panel4, width=canvas_width, height=canvas_height)
         w.pack()
-        self.create_dot(0, 255, 1, 256, w)
-        self.create_dot(255, 0, 256, 1, w)
-        self.create_lines_between_dots(w)
+        self.canvas_null(w)
         paint_with_canvas = partial(self.paint, w)
         w.bind("<B1-Motion>", paint_with_canvas)
 
+        button = tk.Button(panel4, text="Null transform", command=lambda: self.canvas_null(w))
+        button.pack()
         button = tk.Button(panel4, text="Inverse", command=lambda: self.canvas_inverse(w))
+        button.pack()
+        button = tk.Button(panel4, text="Contrast Enhancement", command=lambda: self.canvas_contrast_enhancement(w))
+        button.pack()
+        button = tk.Button(panel4, text="Sharpen Filter", command=lambda: self.canvas_sharpen_filter(w))
         button.pack()
 
         command_with_arg = partial(self.function_filters_handler, self.apply_canvas)
         button = tk.Button(panel4, text="Apply canvas", command=command_with_arg)
         button.pack()
-        panel4.pack(side="left")
+        panel4.pack(side="right")
+
+    def canvas_null(self, canvas):
+        self.points = {}
+        self.create_dot(0, 255, 1, 256, canvas)
+        self.create_dot(255, 0, 256, 1, canvas)
+        self.redraw(canvas)
 
     def canvas_inverse(self, canvas):
         self.points = {}
         self.create_dot(0, 0, 1, 1, canvas)
         self.create_dot(255, 255, 256, 256, canvas)
+        self.redraw(canvas)
+
+    def canvas_contrast_enhancement(self, canvas):
+        self.points = {}
+        self.create_dot(0, 255, 1, 256, canvas)
+        self.create_dot(100, 255, 101, 256, canvas)
+        self.create_dot(200, 1, 201, 1, canvas)
+        self.create_dot(255, 1, 256, 1, canvas)
+        self.redraw(canvas)
+
+    def canvas_sharpen_filter(self, canvas):
+        self.points = {}
+        self.create_dot(0, 200, 1, 201, canvas)
+        self.create_dot(40, 210, 41, 210, canvas)
+        self.create_dot(80, 220, 81, 220, canvas)
+        self.create_dot(100, 50, 61, 100, canvas)
+        self.create_dot(110, 20, 111, 20, canvas)
+        self.create_dot(120, 10, 121, 10, canvas)
+        self.create_dot(255, 0, 256, 0, canvas)
         self.redraw(canvas)
 
     def paint(self, canvas, event):
@@ -246,7 +288,7 @@ class WindowInter:
         window = tk.Tk()
         window.title("Computer Graphics 1")
         window.geometry("600x400")
-        window.configure(background='grey')
+        window.configure(background='white')
 
         offset = int(self.offset.get() or 0)
         divisor = int(self.divisor.get() or 1)
@@ -296,12 +338,11 @@ def to_tkimage(img):
 
 
 def main():
-    path = "friend.jpg"
     raw = resize_image(Image.open(path))
     img = np.asarray(raw)
     img.setflags(write=True)
     grayscale = img[:, :, 0]
-    tkobj = WindowInter()
+    tkobj = WindowInter(path)
     tkobj.show_tk_image(grayscale)
 
 
