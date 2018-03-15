@@ -1,3 +1,5 @@
 # Jetbrains
 .idea/
 __pycache__/
+# Vim
+*.swp

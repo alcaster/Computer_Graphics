@@ -2,7 +2,6 @@ from flask import Flask, render_template, Blueprint, request, jsonify
 from flask_restplus import Api, Resource, fields
 from io import BytesIO
 from PIL import Image
-import numpy as np
 import base64
 
 from src.image_processing import process_image
@@ -22,8 +21,8 @@ def hello_world():
 photo_fields = api.model('Test', {
     'img': fields.String(required=True, description='Image to process'),
     'mode': fields.String(required=True, description='Selected operation on image', example='inverse'),
-    'n': fields.Float(required=False, description='Optional parameter for some operations', example='1.2'),
-    'k': fields.Float(required=False, description='Optional parameter for some operations', example='1.2'),
+    'n': fields.Integer(required=False, description='Optional parameter for some operations', example='4'),
+    'k': fields.Integer(required=False, description='Optional parameter for some operations', example='2'),
 })
 
 

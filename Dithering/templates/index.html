@@ -5,23 +5,29 @@
 {% block title %}MainPage{% endblock %}
 
 {% block body %}
-    <h1 class="container-fluid" style="margin-bottom: 50px">Image Processing App</h1>
-    <div class="container">
-    <div class="row">
-        <div class="col" id="menu">
-            <label class="custom-file">
-                <input type="file" id="file" onchange="changeOrgPhoto()">
-                <span class="custom-file-control"></span>
-            </label>
-            <div class="modes row">
-                <button class="col" id="inverse">Inverse</button>
-                <button class="col" id="average_dithering">Average dithering</button>
-                <button class="col" id="ordered_dithering">Ordered dithering</button>
+    <h1 class="container top text-center">Image Processing App</h1>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col" id="menu">
+                <label class="custom-file">
+                    <input type="file" id="file" onchange="changeOrgPhoto()">
+                    <span class="custom-file-control"></span>
+                </label>
+                <div class="modes row">
+                    <button class="col" id="inverse">Inverse</button>
+                    <button class="col" id="average_dithering">Average dithering</button>
+                    <button class="col" id="ordered_dithering">Ordered dithering</button>
+                </div>
             </div>
+
         </div>
-        <div class="col" id="images">
-            <div id="org"></div>
-            <div id="gen"></div>
+        <div class="row">
+            <div class="col">
+                <div id="org"></div>
+            </div>
+            <div class="col">
+                <div id="gen"></div>
+            </div>
         </div>
     </div>
 {% endblock %}

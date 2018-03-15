@@ -10,30 +10,25 @@ $(document).ready(function () {
                 'img': org_img_base64.split(',')[1],
                 'mode': mode
             };
+
+
             if (parameter_operations.includes($(this).attr('id'))) {
                 switch ($(this).attr('id')) {
                     case "ordered_dithering":
-                        var params_dialog = createDialog("Please input parameters", "", {
-                            buttons: {
-                                "Go": function () {
-                                    var n = params_dialog.find("#n");
-                                    var k = params_dialog.find("#k");
-                                    data['n'] = parseFloat(n.val());
-                                    data['k'] = parseFloat(k.val());
-                                    sendToProcesPhoto(data, org_img_base64);
-                                    $(this).dialog("close");
-                                },
-                                "Cancel": function () {
-                                    $(this).dialog("close");
-                                }
-                            }
-                        });
                         var new_form =
                             '<label for=\"n\">N</label>' +
-                            '<input type=\"number\" step=\"0.01\" id=\"n\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
+                            '<input type=\"number\" id=\"n\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
                             '<label for=\"k\">K</label>' +
-                            '<input type=\"number\" step=\"0.01\" id=\"k\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">';
-                        params_dialog.find("fieldset").append(new_form);
+                            '<input type=\"number\" id=\"k\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">';
+
+                        var params_dialog = createParamsDialog(new_form, function () {
+                            var n = params_dialog.find("#n");
+                            var k = params_dialog.find("#k");
+                            data['n'] = parseInt(n.val());
+                            data['k'] = parseInt(k.val());
+                            sendToProcesPhoto(data, org_img_base64);
+                            $(this).dialog("close");
+                        });
                         break;
                 }
             }
@@ -78,14 +73,22 @@ function sendToProcesPhoto(data, org_img_base64) {
     })
 }
 
-function createDialog(title, text, options) {
-    return $("<div class='dialog-confirm' title='" + title + "'><p>" + text + "</p><form><fieldset></fieldset></form></div>").dialog(
-        Object.assign({}, {
-            resizable: false,
-            height: "auto",
-            width: 400,
-            modal: true,
-            closeText: ""
-        }, options)
-    );
+function createParamsDialog(fields, callback) {
+    return createDialog("Please input parameters", "", "<form><fieldset>" + fields + "</fieldset></form>", {
+        resizable: false,
+        height: "auto",
+        width: 400,
+        modal: true,
+        closeText: "",
+        buttons: {
+            "Go": callback,
+            "Cancel": function () {
+                $(this).dialog("close");
+            }
+        }
+    })
+}
+
+function createDialog(title, text, extra, options) {
+    return $("<div class='dialog-confirm' title='" + title + "'><p>" + text + "</p>" + extra + "</div>").dialog(options);
 }
