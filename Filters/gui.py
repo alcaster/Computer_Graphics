@@ -7,7 +7,7 @@ from functools import partial
 import itertools
 
 python_green = "#476042"
-path = "test_image_1.jpg"
+path = "../data/images/test_image_1.jpg"
 
 filters_database = {
     'Blur': np.array((
