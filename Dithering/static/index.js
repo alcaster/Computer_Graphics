@@ -1,4 +1,4 @@
-parameter_operations = ['ordered_dithering'];
+parameter_operations = ['ordered_dithering', 'uniform_color_quantization'];
 
 
 $(document).ready(function () {
@@ -9,19 +9,21 @@ $(document).ready(function () {
             var data = {
                 'img': org_img_base64.split(',')[1],
                 'mode': mode
-            };
+            }, params_dialog, new_form;
 
 
             if (parameter_operations.includes($(this).attr('id'))) {
+                console.log("lol2");
+
                 switch ($(this).attr('id')) {
                     case "ordered_dithering":
-                        var new_form =
+                        new_form =
                             '<label for=\"n\">N</label>' +
                             '<input type=\"number\" id=\"n\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
                             '<label for=\"k\">K</label>' +
                             '<input type=\"number\" id=\"k\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">';
 
-                        var params_dialog = createParamsDialog(new_form, function () {
+                        params_dialog = createParamsDialog(new_form, function () {
                             var n = params_dialog.find("#n");
                             var k = params_dialog.find("#k");
                             data['n'] = parseInt(n.val());
@@ -29,6 +31,29 @@ $(document).ready(function () {
                             sendToProcesPhoto(data, org_img_base64);
                             $(this).dialog("close");
                         });
+                        break;
+                    case "uniform_color_quantization":
+                        console.log("lol3");
+                        new_form =
+                            '<label for=\"Kr\">Kr</label>' +
+                            '<input type=\"number\" id=\"Kr\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
+                            '<label for=\"Kg\">Kg</label>' +
+                            '<input type=\"number\" id=\"Kg\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
+                            '<label for=\"Kb\">Kb</label>' +
+                            '<input type=\"number\" id=\"Kb\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">';
+                        console.log("lol4");
+
+                        params_dialog = createParamsDialog(new_form, function () {
+                            var kr = params_dialog.find("#Kr");
+                            var kg = params_dialog.find("#Kg");
+                            var kb = params_dialog.find("#Kb");
+                            data['kr'] = parseInt(kr.val());
+                            data['kg'] = parseInt(kg.val());
+                            data['kb'] = parseInt(kb.val());
+                            sendToProcesPhoto(data, org_img_base64);
+                            $(this).dialog("close");
+                        });
+
                         break;
                 }
             }

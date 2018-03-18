@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 import base64
 
-from src.utils.array_utils import translate_0_1_to_0_255
+from src.utils.array_utils import translate_0_1_to_0_255, get_index_in_translation_0_1
 
 
 def inverse(img: np.ndarray, **kwargs):
@@ -54,7 +54,23 @@ def ordered_dithering(img: np.ndarray, **kwargs):
 
 
 def uniform_color_quantization(img: np.ndarray, **kwargs):
-    return NotImplementedError
+    if all(x in kwargs for x in ['kr', 'kg', 'kb']):
+        kr = kwargs['kr']
+        kg = kwargs['kg']
+        kb = kwargs['kb']
+
+        ranges_r = translate_0_1_to_0_255(kr + 1)
+        ranges_g = translate_0_1_to_0_255(kg + 1)
+        ranges_b = translate_0_1_to_0_255(kb + 1)
+        ranges = [ranges_r, ranges_g, ranges_b]
+
+        def quanization(pixel):
+            new_pixel = [uniform_quantify_pixel(c, range) for c, range in zip(pixel, ranges)]
+            return new_pixel
+
+        new_img = np.apply_along_axis(quanization, -1, img)
+        return new_img.astype(np.uint8)
+    return img
 
 
 def octree_color_quantization(img: np.ndarray, **kwargs):
@@ -83,6 +99,11 @@ def create_bayer_matrix(n):
     return bayer_matrix.astype(dtype=np.uint8)
 
 
+def uniform_quantify_pixel(val, ranges):
+    translation = translate_0_1_to_0_255(len(ranges) - 1)
+    return int(translation[get_index_in_translation_0_1(val, ranges)])
+
+
 def get_gray_image(img):
     def pixel2gray(pixel):
         scale = [0.3, 0.6, 0.1]
@@ -106,5 +127,6 @@ modes = {
     "inverse": inverse,
     "average_dithering": average_dithering,
     "ordered_dithering": ordered_dithering,
+    "uniform_color_quantization": uniform_color_quantization,
     "octree_color_quantization": octree_color_quantization,
 }
