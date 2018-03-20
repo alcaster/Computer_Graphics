@@ -5,9 +5,13 @@ from tkinter import Canvas, filedialog
 import collections
 from functools import partial
 import itertools
+import matplotlib.pyplot as plt
+
 
 python_green = "#476042"
 path = "test_image_1.jpg"
+
+np.set_printoptions(threshold=np.nan)  # debug
 
 filters_database = {
     'Blur': np.array((
@@ -48,18 +52,18 @@ filters_database = {
         [-1, 0, 1],
         [-1, 1, 1],
         [-1, 0, 1]), dtype="int"),
-    'South east emboss': np.array((
-        [-1, -1, 0],
-        [-1, 1, 1],
-        [0, 1, 1]), dtype="int"),
-    'South emboss2': np.array((
-        [0, 0, 0],
-        [0, 3, 1],
-        [0, 1, 1]), dtype="int"),
-    'South emboss': np.array((
-        [-1, -1, -1],
-        [0, 1, 0],
-        [1, 1, 1]), dtype="int"),
+    # 'South east emboss': np.array((
+    #     [-1, -1, 0],
+    #     [-1, 1, 1],
+    #     [0, 1, 1]), dtype="int"),
+    # 'South emboss2': np.array((
+    #     [0, 0, 0],
+    #     [0, 3, 1],
+    #     [0, 1, 1]), dtype="int"),
+    # 'South emboss': np.array((
+    #     [-1, -1, -1],
+    #     [0, 1, 0],
+    #     [1, 1, 1]), dtype="int"),
 
 }
 
@@ -108,6 +112,10 @@ class WindowInter:
 
     def create_function_filters_buttons(self):
         panel5 = tk.Label(self.window)
+
+        command_with_arg = partial(self.function_filters_handler, self.average_dithering)
+        button = tk.Button(panel5, text="Average Dithering", command=command_with_arg)
+        button.pack()
 
         command_with_arg = partial(self.function_filters_handler, self.set_contrast)
         button = tk.Button(panel5, text="Contrast", command=command_with_arg)
@@ -163,12 +171,13 @@ class WindowInter:
         self.gamma = tk.Entry(self.window, width=5)
         self.gamma.pack()
 
-        self.create_right_panel()
+        # self.create_right_panel()
 
     def load_image(self):
         fname = filedialog.askopenfilename(initialdir='.')
         self.path = fname
         raw = resize_image(Image.open(fname))
+
         grayscale = np.asarray(raw)[:, :, 0]
         self.top = grayscale
 
@@ -183,8 +192,8 @@ class WindowInter:
         paint_with_canvas = partial(self.paint, w)
         w.bind("<B1-Motion>", paint_with_canvas)
 
-        button = tk.Button(panel4, text="Null transform", command=lambda: self.canvas_null(w))
-        button.pack()
+        # button = tk.Button(panel4, text="Null transform", command=lambda: self.canvas_null(w))
+        # button.pack()
         button = tk.Button(panel4, text="Inverse", command=lambda: self.canvas_inverse(w))
         button.pack()
         button = tk.Button(panel4, text="Contrast Enhancement", command=lambda: self.canvas_contrast_enhancement(w))
@@ -268,6 +277,25 @@ class WindowInter:
             img[i, j] = 255 - real_values[img[i, j]]
         return img
 
+    def average_dithering(self):
+        img = self.top.copy()
+        np_shape = img.shape
+        threshold = int(np.mean(img))
+        print(threshold)
+
+        img = np.ndarray.flatten(img)
+        for pixel in range(0, img.shape[0]):
+            if img[pixel] > threshold:
+                img[pixel] = 1
+            else:
+                img[pixel] = 0
+        img = np.array(img).reshape(np_shape)
+        # img = img > threshold
+
+        show_images([img, self.top])
+        return self.top
+
+
     def set_brightness(self):
         img = self.top.copy()
         brightness = int(self.brightness.get() or 0)
@@ -282,7 +310,7 @@ class WindowInter:
     def gamma_corection(self):
         img = self.top.copy()
         gamma = float(self.gamma.get() or 0)
-        return 255 * (img / 255)**(1 / gamma)
+        return 255 * (img / 255) ** (1 / gamma)
 
     def set_contrast(self):
         img = self.top.copy()
@@ -305,7 +333,6 @@ class WindowInter:
 
         offset = int(self.offset.get() or 0)
         divisor = int(self.divisor.get() or 1)
-        anchor = (self.anchor_col, self.anchor_row)
 
         filtered = convolution(self.top, kernel, offset, divisor)
         raw = to_tkimage(self.top)
@@ -339,6 +366,15 @@ def convolution(image, filter, offset, divisor):
     return np.array(new_image)
 
 
+def get_grey_image(img):
+    return np.apply_along_axis(_pixel2gray, -1, img)
+
+
+def _pixel2gray(pixel):
+    scale = [0.3, 0.6, 0.1]  # factor to grayscale
+    return sum([val * scal for val, scal in zip(pixel, scale)])
+
+
 def resize_image(img):
     wpercent = (300 / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(wpercent)))
@@ -359,4 +395,45 @@ def main():
     tkobj.show_tk_image(grayscale)
 
 
+def show_images(images, cols=1, titles=None):
+    """Display a list of images in a single figure with matplotlib.
+
+    Parameters
+    ---------
+    images: List of np.arrays compatible with plt.imshow.
+
+    cols (Default = 1): Number of columns in figure (number of rows is
+                        set to np.ceil(n_images/float(cols))).
+
+    titles: List of titles corresponding to each image. Must have
+            the same length as titles.
+    """
+    assert ((titles is None) or (len(images) == len(titles)))
+    n_images = len(images)
+    if titles is None: titles = ['Image (%d)' % i for i in range(1, n_images + 1)]
+    fig = plt.figure()
+    for n, (image, title) in enumerate(zip(images, titles)):
+        a = fig.add_subplot(cols, np.ceil(n_images / float(cols)), n + 1)
+        if image.ndim == 2:
+            plt.gray()
+        plt.imshow(image)
+        a.set_title(title)
+    fig.set_size_inches(np.array(fig.get_size_inches()) * n_images)
+    plt.show()
+
+
 main()
+
+## 2 labs
+# On labs
+# load image and convert it to grayscale Y=0.3R+0.6G +0.1B
+# apply average dithering w/ 2 grayscale
+# display grayscale and result images side by side
+# Project
+# a+o
+# average dithering
+# ordered dithering
+# Implement 2 assigned dithering
+# load image, convert to grayscale
+# apply selected dithering algorithms
+# display greyscale and result images in their original resolution
