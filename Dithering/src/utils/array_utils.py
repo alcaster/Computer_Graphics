@@ -13,5 +13,5 @@ def get_index_in_translation_0_1(val, ranges):
     f.ex [0, 85, 170, 255] numer 90 fits in 1 gap.
     """
     for i in range(len(ranges)):
-        if ranges[i] > val:
+        if ranges[i] >= val:
             return i - 1
