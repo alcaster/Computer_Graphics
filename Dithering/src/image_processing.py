@@ -43,31 +43,27 @@ def average_dithering_n(img: np.ndarray, **kwargs):
 
 def ordered_dithering(img: np.ndarray, **kwargs):
     gray = get_gray_image(img)
-    height, width = gray.shape
     if 'n' in kwargs and 'k' in kwargs:
         n = kwargs['n']
         k = kwargs['k']
-        bayer = create_bayer_matrix(n)
-        print(bayer)
         result = gray.copy()
-        for y in tqdm(range(height), desc='Changing pixels'):
-            for x in range(width):
-                threshold = bayer[x % n, y % n]
-                values = translate_0_1_to_0_255(k)
-                if k == 2:
-                    result[y, x] = values[0] if gray[y, x] < threshold else values[1]
-                elif k == 4:
-                    threshold1 = max(0, threshold - int(threshold / 2))
-                    threshold2 = threshold
-                    threshold3 = min(255, threshold + int(threshold / 2))
-                    if gray[y, x] < threshold1:
-                        result[y, x] = values[0]
-                    elif threshold2 > gray[y, x] >= threshold1:
-                        result[y, x] = values[1]
-                    elif threshold3 > gray[y, x] >= threshold2:
-                        result[y, x] = values[2]
-                    elif gray[y, x] >= threshold3:
-                        result[y, x] = values[3]
+        bayer_matrix = create_bayer_matrix(n)
+        ranges = translate_0_1_to_0_255(k)
+        print(f"Bayer matrix {bayer_matrix}")
+        for row_index in range(len(result)):
+            for col_index in range(len(result[row_index])):
+                pixel_value = result[row_index][col_index]
+                threshold = bayer_matrix[row_index % n, col_index % n]
+                c = threshold / (k - 1)
+                m = [c+i*255/(k-1) for i in range(k-1)]
+                # print(f"M = {m}")  # Debug
+                if pixel_value >= m[-1]:
+                    result[row_index][col_index] = ranges[-1]
+                else:
+                    for i in range(k - 1):
+                        if pixel_value < m[i]:
+                            result[row_index][col_index] = ranges[i]
+                            break
         return result
 
     return img
@@ -127,7 +123,7 @@ def octree_color_quantization(img: np.ndarray, **kwargs):
     return np.asarray(out_image)
 
 
-def dither(n):
+def bayer(n):
     if n == 2:
         return np.array([[1, 3], [4, 2]])
     if n == 3:
@@ -135,13 +131,13 @@ def dither(n):
     if n in [5, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31]:
         raise Exception("N must be very specific.")
     return np.vstack((
-        np.hstack((4 * (dither(n / 2) - 1) + 1, 4 * (dither(n / 2) - 1) + 3)),
-        np.hstack((4 * (dither(n / 2) - 1) + 4, 4 * (dither(n / 2) - 1) + 2)),
+        np.hstack((4 * (bayer(n / 2) - 1) + 1, 4 * (bayer(n / 2) - 1) + 3)),
+        np.hstack((4 * (bayer(n / 2) - 1) + 4, 4 * (bayer(n / 2) - 1) + 2)),
     ))
 
 
 def create_bayer_matrix(n):
-    bayer_matrix = (1 / ((n * n) + 1)) * dither(n)
+    bayer_matrix = (1 / ((n * n) + 1)) * bayer(n)
     for y in tqdm(range(len(bayer_matrix)), desc="Creating bayer matrix"):
         for x in range(len(bayer_matrix)):
             bayer_matrix[x, y] = int(

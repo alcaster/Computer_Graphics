@@ -26,11 +26,9 @@ class OctreeNode(object):
                     leaf_nodes.extend(node.get_all_leaf_nodes())
         return leaf_nodes
 
-    def add_color(self, color, level, parent):
+    def add_color(self, color: Color, level, parent):
         if level >= OctreeQuantizer.MAX_DEPTH:
-            self.color.red += color.red
-            self.color.green += color.green
-            self.color.blue += color.blue
+            self.color += color
             self.pixel_count += 1
             return
         index = self.get_color_index_for_level(color, level)
@@ -106,22 +104,19 @@ class OctreeQuantizer(object):
         self.levels[level].append(node)
 
     def add_color(self, color):
-        # passes self value as `parent` to save nodes to levels dict
         self.root.add_color(color, 0, self)
 
     def make_palette(self, color_count):
         palette = []
         palette_index = 0
         leaf_count = len(self.get_leaves())
-        # reduce nodes
-        # up to 8 leaves can be reduced here and the palette will have
-        # only 248 colors (in worst case) instead of expected 256 colors
+
         for level in range(OctreeQuantizer.MAX_DEPTH - 1, -1, -1):
             if self.levels[level]:
                 for node in self.levels[level]:
-                    leaf_count -= node.remove_leaves()
                     if leaf_count <= color_count:
                         break
+                    leaf_count -= node.remove_leaves()
                 if leaf_count <= color_count:
                     break
                 self.levels[level] = []
