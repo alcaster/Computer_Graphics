@@ -1,4 +1,4 @@
-parameter_operations = ['ordered_dithering', 'uniform_color_quantization', 'average_dithering_n'];
+parameter_operations = ['ordered_dithering', 'uniform_color_quantization', 'average_dithering_n', 'octree_color_quantization'];
 
 
 $(document).ready(function () {
@@ -31,6 +31,7 @@ $(document).ready(function () {
                             $(this).dialog("close");
                         });
                         break;
+                    case "octree_color_quantization":
                     case "average_dithering_n":
                         new_form =
                             '<label for=\"n\">N</label>' +
@@ -51,22 +52,6 @@ $(document).ready(function () {
                             '<input type=\"number\" id=\"Kg\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
                             '<label for=\"Kb\">Kb</label>' +
                             '<input type=\"number\" id=\"Kb\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                         params_dialog = createParamsDialog(new_form, function () {
                             var kr = params_dialog.find("#Kr");
                             var kg = params_dialog.find("#Kg");
@@ -77,7 +62,6 @@ $(document).ready(function () {
                             sendToProcesPhoto(data, org_img_base64);
                             $(this).dialog("close");
                         });
-
                         break;
                 }
             }

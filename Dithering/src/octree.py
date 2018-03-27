@@ -1,13 +1,19 @@
+from operator import attrgetter
+
 from src.color import Color
 
 
-class OctreeNode(object):
+class OctreeNode:
 
-    def __init__(self, level, parent):
+    def __init__(self, level, parent, root):
         self.color = Color(0, 0, 0)
         self.pixel_count = 0
         self.palette_index = 0
         self.children = [None for _ in range(8)]
+        self.root = self if root is None else root
+        self.parent = parent
+        self.octree_quantizer = self.root.parent
+        self.level = level
         # add node to current level
         if level < OctreeQuantizer.MAX_DEPTH - 1:
             parent.add_level_node(level, self)
@@ -26,14 +32,26 @@ class OctreeNode(object):
                     leaf_nodes.extend(node.get_all_leaf_nodes())
         return leaf_nodes
 
+    def get_deepest_leaf(self):
+        leafs = self.root.get_all_leaf_nodes()
+        max_deep = max(leafs, key=attrgetter("level"))
+
+    def reduce_leafs(self):
+        deepest_leaf = self.get_deepest_leaf()
+
     def add_color(self, color: Color, level, parent):
         if level >= OctreeQuantizer.MAX_DEPTH:
             self.color += color
             self.pixel_count += 1
+            self.octree_quantizer.leafs += 1
+            if self.octree_quantizer.leafs >= self.octree_quantizer.n:
+                self.reduce_leafs()
             return
+
         index = self.get_color_index_for_level(color, level)
         if not self.children[index]:
-            self.children[index] = OctreeNode(level, parent)
+            self.children[index] = OctreeNode(level, parent, self.root)
+
         self.children[index].add_color(color, level + 1, parent)
 
     def get_palette_index(self, color, level):
@@ -90,12 +108,14 @@ class OctreeNode(object):
         return index
 
 
-class OctreeQuantizer(object):
+class OctreeQuantizer:
     MAX_DEPTH = 8
 
-    def __init__(self):
+    def __init__(self, n):
         self.levels = {i: [] for i in range(OctreeQuantizer.MAX_DEPTH)}
-        self.root = OctreeNode(0, self)
+        self.n = n
+        self.root = OctreeNode(0, self, None)
+        self.leafs = 0
 
     def get_leaves(self):
         return [node for node in self.root.get_all_leaf_nodes()]

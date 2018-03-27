@@ -13,8 +13,7 @@ def uniform_color_quantization_test(org):
 
 
 def octree_test(org):
-    processed = octree_color_quantization(org)
-    processed = np.asarray(processed)
+    processed = octree_color_quantization(org, n=10)
     show_images([org, processed])
 
 
@@ -25,8 +24,8 @@ def average_dithering_n_test(org):
 
 def main():
     org = np.asarray(Image.open(PATH))
-    # octree_test(org)
-    average_dithering_n_test(org)
+    octree_test(org)
+    # average_dithering_n_test(org)
 
 
 if __name__ == '__main__':
