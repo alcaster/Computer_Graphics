@@ -1,4 +1,4 @@
-parameter_operations = ['ordered_dithering', 'uniform_color_quantization'];
+parameter_operations = ['ordered_dithering', 'uniform_color_quantization', 'average_dithering_n'];
 
 
 $(document).ready(function () {
@@ -13,7 +13,6 @@ $(document).ready(function () {
 
 
             if (parameter_operations.includes($(this).attr('id'))) {
-                console.log("lol2");
 
                 switch ($(this).attr('id')) {
                     case "ordered_dithering":
@@ -32,8 +31,19 @@ $(document).ready(function () {
                             $(this).dialog("close");
                         });
                         break;
+                    case "average_dithering_n":
+                        new_form =
+                            '<label for=\"n\">N</label>' +
+                            '<input type=\"number\" id=\"n\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">';
+
+                        params_dialog = createParamsDialog(new_form, function () {
+                            var n = params_dialog.find("#n");
+                            data['n'] = parseInt(n.val());
+                            sendToProcesPhoto(data, org_img_base64);
+                            $(this).dialog("close");
+                        });
+                        break;
                     case "uniform_color_quantization":
-                        console.log("lol3");
                         new_form =
                             '<label for=\"Kr\">Kr</label>' +
                             '<input type=\"number\" id=\"Kr\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
@@ -41,7 +51,21 @@ $(document).ready(function () {
                             '<input type=\"number\" id=\"Kg\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">' +
                             '<label for=\"Kb\">Kb</label>' +
                             '<input type=\"number\" id=\"Kb\" value=\"2\" class=\"text ui-widget-content ui-corner-all\">';
-                        console.log("lol4");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                         params_dialog = createParamsDialog(new_form, function () {
                             var kr = params_dialog.find("#Kr");

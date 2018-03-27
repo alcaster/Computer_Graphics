@@ -2,8 +2,11 @@ from io import BytesIO
 from PIL import Image
 import numpy as np
 import base64
+from tqdm import tqdm
 
 from src.utils.array_utils import translate_0_1_to_0_255, get_index_in_translation_0_1
+from src.color import Color
+from src.octree import OctreeQuantizer
 
 
 def inverse(img: np.ndarray, **kwargs):
@@ -21,6 +24,23 @@ def average_dithering(img: np.ndarray, **kwargs):
     return result
 
 
+def average_dithering_n(img: np.ndarray, **kwargs):
+    img = get_gray_image(img)
+    shape = img.shape
+    img_flatten = np.ndarray.flatten(img)
+    if 'n' in kwargs:
+        n = kwargs['n']
+        ranges = translate_0_1_to_0_255(n)
+        means = [img_flatten[(i < img_flatten) & (img_flatten < j)].mean() for i, j in zip(ranges, ranges[1:])]
+        print(means)
+        for pixel in tqdm(range(0, img_flatten.shape[0]), desc="Generating new img"):
+            # print(img_flatten[pixel], means, get_index_in_translation_0_1(img_flatten[pixel], means) + 1)  # DEBUG
+            new_idx = get_index_in_translation_0_1(img_flatten[pixel], means) + 1
+            img_flatten[pixel] = ranges[new_idx]  # Translate (from format 0,1,2) 2-> 255
+        result = np.array(img_flatten).reshape(shape)
+    return result
+
+
 def ordered_dithering(img: np.ndarray, **kwargs):
     gray = get_gray_image(img)
     height, width = gray.shape
@@ -30,7 +50,7 @@ def ordered_dithering(img: np.ndarray, **kwargs):
         bayer = create_bayer_matrix(n)
         print(bayer)
         result = gray.copy()
-        for y in range(height):
+        for y in tqdm(range(height), desc='Changing pixels'):
             for x in range(width):
                 threshold = bayer[x % n, y % n]
                 values = translate_0_1_to_0_255(k)
@@ -74,7 +94,37 @@ def uniform_color_quantization(img: np.ndarray, **kwargs):
 
 
 def octree_color_quantization(img: np.ndarray, **kwargs):
-    return NotImplementedError
+    image = Image.fromarray(img)
+    pixels = image.load()
+    width, height = image.size
+
+    octree = OctreeQuantizer()
+
+    # add colors to the octree
+    for j in tqdm(range(height), desc="Adding colors to octree"):
+        for i in range(width):
+            r, g, b = pixels[i, j]
+            octree.add_color(Color(int(r), int(g), int(b)))
+
+    # 256 colors for 8 bits per pixel output image
+    palette = octree.make_palette(256)
+
+    # create palette for 256 color max and save to file
+    palette_image = Image.new('RGB', (16, 16))
+    palette_pixels = palette_image.load()
+    for i, color in tqdm(enumerate(palette), desc="Creating palette for 256 colors"):
+        palette_pixels[i % 16, i // 16] = (color.red, color.green, color.blue)
+    palette_image.save('palette.png')
+
+    # save output image
+    out_image = Image.new('RGB', (width, height))
+    out_pixels = out_image.load()
+    for j in tqdm(range(height), desc="Creating new image"):
+        for i in range(width):
+            index = octree.get_palette_index(Color(*pixels[i, j]))
+            color = palette[index]
+            out_pixels[i, j] = (color.red, color.green, color.blue)
+    return np.asarray(out_image)
 
 
 def dither(n):
@@ -92,7 +142,7 @@ def dither(n):
 
 def create_bayer_matrix(n):
     bayer_matrix = (1 / ((n * n) + 1)) * dither(n)
-    for y in range(len(bayer_matrix)):
+    for y in tqdm(range(len(bayer_matrix)), desc="Creating bayer matrix"):
         for x in range(len(bayer_matrix)):
             bayer_matrix[x, y] = int(
                 255 * ((bayer_matrix[x, y] + 0.5) / (len(bayer_matrix) * len(bayer_matrix))) * 10)
@@ -116,6 +166,7 @@ def process_image(data: dict) -> np.ndarray:
     byte_img = data.pop("img")
     im = Image.open(BytesIO(base64.b64decode(byte_img)))
     numpy_image = np.asarray(im)
+    print(f"Got image with shape {numpy_image.shape}")
     mode = data.pop("mode")
     if mode in modes:
         transformed = modes[mode](numpy_image, **data)
@@ -126,6 +177,7 @@ def process_image(data: dict) -> np.ndarray:
 modes = {
     "inverse": inverse,
     "average_dithering": average_dithering,
+    "average_dithering_n": average_dithering_n,
     "ordered_dithering": ordered_dithering,
     "uniform_color_quantization": uniform_color_quantization,
     "octree_color_quantization": octree_color_quantization,

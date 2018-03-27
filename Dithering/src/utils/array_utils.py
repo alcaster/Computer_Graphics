@@ -15,3 +15,4 @@ def get_index_in_translation_0_1(val, ranges):
     for i in range(len(ranges)):
         if ranges[i] >= val:
             return i - 1
+    return len(ranges) - 1
