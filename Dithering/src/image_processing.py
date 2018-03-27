@@ -108,7 +108,7 @@ def octree_color_quantization(img: np.ndarray, **kwargs):
 
     # 256 colors for 8 bits per pixel output image
     palette = octree.make_palette(256)
-
+    print(f"Palette len = {len(palette)}, first entry {palette[0]}")
     # create palette for 256 color max and save to file
     palette_image = Image.new('RGB', (16, 16))
     palette_pixels = palette_image.load()

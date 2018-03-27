@@ -60,14 +60,14 @@ class OctreeNode(object):
         Return the number of removed leaves
         """
         result = 0
-        for i in range(8):
-            node = self.children[i]
+        for node in self.children:
             if node:
                 self.color.red += node.color.red
                 self.color.green += node.color.green
                 self.color.blue += node.color.blue
                 self.pixel_count += node.pixel_count
                 result += 1
+        self.children = [None for _ in range(8)]
         return result - 1
 
     def get_average_color(self):
