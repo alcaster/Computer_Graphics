@@ -5,8 +5,7 @@ import base64
 from tqdm import tqdm
 
 from src.utils.array_utils import translate_0_1_to_0_255, get_index_in_translation_0_1
-from src.color import Color
-from src.octree import OctreeQuantizer
+from src.octree import OctreeNode
 
 
 def inverse(img: np.ndarray, **kwargs):
@@ -30,14 +29,16 @@ def average_dithering_n(img: np.ndarray, **kwargs):
     img_flatten = np.ndarray.flatten(img)
     if 'n' in kwargs:
         n = kwargs['n']
-        ranges = translate_0_1_to_0_255(n)
-        means = [img_flatten[(i < img_flatten) & (img_flatten < j)].mean() for i, j in zip(ranges, ranges[1:])]
-        print(means)
-        for pixel in tqdm(range(0, img_flatten.shape[0]), desc="Generating new img"):
-            new_idx = get_index_in_translation_0_1(img_flatten[pixel], means) + 1
-            print(f"Ranges={ranges}, means={means}, new_idx={new_idx}, pixel={img_flatten[pixel]}")  # Debug
-            img_flatten[pixel] = ranges[new_idx]  # Translate (from format 0,1,2) 2-> 255
-        result = np.array(img_flatten).reshape(shape)
+    else:
+        return img
+
+    ranges = translate_0_1_to_0_255(n)
+    means = [img_flatten[(i < img_flatten) & (img_flatten < j)].mean() for i, j in zip(ranges, ranges[1:])]
+    for pixel in tqdm(range(0, img_flatten.shape[0]), desc="Generating new img"):
+        new_idx = get_index_in_translation_0_1(img_flatten[pixel], means) + 1
+        # print(f"Ranges={ranges}, means={means}, new_idx={new_idx}, pixel={img_flatten[pixel]}")  # Debug
+        img_flatten[pixel] = ranges[new_idx]  # Translate (from format 0,1,2) 2-> 255
+    result = np.array(img_flatten).reshape(shape)
     return result
 
 
@@ -74,55 +75,55 @@ def uniform_color_quantization(img: np.ndarray, **kwargs):
         kr = kwargs['kr']
         kg = kwargs['kg']
         kb = kwargs['kb']
+    else:
+        return img
 
-        ranges_r = translate_0_1_to_0_255(kr + 1)
-        ranges_g = translate_0_1_to_0_255(kg + 1)
-        ranges_b = translate_0_1_to_0_255(kb + 1)
-        ranges = [ranges_r, ranges_g, ranges_b]
+    ranges_r = translate_0_1_to_0_255(kr + 1)
+    ranges_g = translate_0_1_to_0_255(kg + 1)
+    ranges_b = translate_0_1_to_0_255(kb + 1)
+    ranges = [ranges_r, ranges_g, ranges_b]
 
-        def quanization(pixel):
-            new_pixel = [uniform_quantify_pixel(c, range) for c, range in zip(pixel, ranges)]
-            return new_pixel
+    def quanization(pixel):
+        new_pixel = [uniform_quantify_pixel(c, range) for c, range in zip(pixel, ranges)]
+        return new_pixel
 
-        new_img = np.apply_along_axis(quanization, -1, img)
-        return new_img.astype(np.uint8)
-    return img
+    new_img = np.apply_along_axis(quanization, -1, img)
+    return new_img.astype(np.uint8)
 
 
 def octree_color_quantization(img: np.ndarray, **kwargs):
-    image = Image.fromarray(img)
-    pixels = image.load()
-    width, height = image.size
     if 'n' in kwargs:
         n = kwargs['n']
+    else:
+        return img
 
-        octree = OctreeQuantizer(n)
+    img = Image.fromarray(img)
+    rootNode = OctreeNode(0, None)
+    leafs_count = 0
+    pixels = img.load()
 
-        # add colors to the octree
-        for j in tqdm(range(height), desc="Adding colors to octree"):
-            for i in range(width):
-                r, g, b = pixels[i, j]
-                octree.add_color(Color(int(r), int(g), int(b)))
+    for i in tqdm(range(img.size[0]), desc="Adding colors"):
+        for j in range(img.size[1]):
+            is_inserted = rootNode.insert(np.array(pixels[i, j]), 0)
+            leafs_count += is_inserted
 
-        # 256 colors for 8 bits per pixel output image
-        palette = octree.make_palette(n)
-        print(f"Palette len = {len(palette)}, first entry {palette[0]}")
-        # create palette for 256 color max and save to file
-        palette_image = Image.new('RGB', (16, 16))
-        palette_pixels = palette_image.load()
-        for i, color in tqdm(enumerate(palette), desc="Creating palette for 256 colors"):
-            palette_pixels[i % 16, i // 16] = (color.red, color.green, color.blue)
-        # palette_image.save('palette.png')
+            while leafs_count > n:
+                leaves = rootNode.get_leafs()
+                max_depth = max([l.depth for l in leaves])
+                toReduce = None
+                for l in leaves:
+                    if l.depth == max_depth:
+                        if toReduce is None or len(l.parent.children) > len(toReduce.children):
+                            toReduce = l.parent
+                leafs_count -= toReduce.reduce_node()
 
-        # save output image
-        out_image = Image.new('RGB', (width, height))
-        out_pixels = out_image.load()
-        for j in tqdm(range(height), desc="Creating new image"):
-            for i in range(width):
-                index = octree.get_palette_index(Color(*pixels[i, j]))
-                color = palette[index]
-                out_pixels[i, j] = (color.red, color.green, color.blue)
-        return np.asarray(out_image)
+    for l in rootNode.get_leafs():
+        l.normalize_color()
+
+    for i in tqdm(range(img.size[0]), desc="Transforming"):
+        for j in range(img.size[1]):
+            pixels[i, j] = tuple(rootNode.find_leaf_for_color(np.array(pixels[i, j]), 0).new_color)
+    return np.array(img)
 
 
 def bayer(n):
