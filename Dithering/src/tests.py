@@ -13,7 +13,8 @@ def uniform_color_quantization_test(org):
 
 
 def octree_test(org):
-    processed = octree_color_quantization(org, n=10)
+    processed = octree_color_quantization(org, n=50)
+    processed = np.array(processed)
     show_images([org, processed])
 
 
