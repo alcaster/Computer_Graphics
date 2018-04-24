@@ -1,4 +1,6 @@
+import itertools
 import math
+
 import tkinter as tk
 import numpy as np
 
@@ -25,15 +27,15 @@ class Board:
         self.make_buttons()
 
     def make_buttons(self):
-        button = tk.Button(master, text="Redraw", command=self.redraw)
-        button.pack(side=tk.BOTTOM)
-        button = tk.Button(master, text="DDA", command=lambda: self.redraw(self.DDA))
-        button.pack(side=tk.BOTTOM)
-        button = tk.Button(master, text="Midpointv2", command=lambda: self.redraw(self.midpoint_circle_v2))
+        button = tk.Button(master, text="Drawing with pen", command=lambda: self.redraw(self.drawing_with_pen))
         button.pack(side=tk.BOTTOM)
         button = tk.Button(master, text="Gupta Sproull", command=lambda: self.redraw(self.gupta_sproull))
         button.pack(side=tk.BOTTOM)
-        button = tk.Button(master, text="Drawing with pen", command=lambda: self.redraw(self.drawing_with_pen))
+        button = tk.Button(master, text="Midpointv2", command=lambda: self.redraw(self.midpoint_circle_v2))
+        button.pack(side=tk.BOTTOM)
+        button = tk.Button(master, text="DDA", command=lambda: self.redraw(self.DDA))
+        button.pack(side=tk.BOTTOM)
+        button = tk.Button(master, text="Redraw", command=self.redraw)
         button.pack(side=tk.BOTTOM)
         self.create_input("Radius")
         self.radius = tk.Entry(self.master, width=5)
@@ -41,6 +43,9 @@ class Board:
         self.create_input("Brush size")
         self.brush_size = tk.Entry(self.master, width=5)
         self.brush_size.pack()
+        self.create_input("thickness")
+        self.thickness = tk.Entry(self.master, width=5)
+        self.thickness.pack()
 
     def create_input(self, name):
         label = tk.IntVar()
@@ -78,12 +83,13 @@ class Board:
         print(f"DDA from {p1} to {p2}")
         dy = p2.y - p1.y
         dx = p2.x - p1.x
-        m = dy / dx
-        y = p1.y
-        for x in range(p1.x + 1, p2.x):
-            self.try_create_pixel(Point(x, round(y)))
-            y += m
-        print(self.points)
+        step = abs(dx if dx >= abs(dy) else dy)
+        dx, dy = dx / step, dy / step
+        while step > 0:
+            self.try_create_pixel(Point(int(p1.x), int(p1.y)))
+            p1.y += dy
+            p1.x += dx
+            step -= 1
 
     def draw_circle_point(self, x: int, y: int, p: Point):
         self.try_create_pixel(Point(p.x + x, p.y + y), '#000000')
@@ -123,7 +129,7 @@ class Board:
         p1, p2 = arrange_points(self.points[-2:])
         print(f"Gupta-Sproull from {p1} to {p2}")
 
-        thickness = 3
+        thickness = int(self.thickness.get() or 5)
 
         dx = p2.x - p1.x
         dy = p2.y - p1.y
@@ -131,15 +137,34 @@ class Board:
         dNE = 2 * (dy - dx)
         d = 2 * dy - dx
 
-        two_v_dx = 0
+        # two_v_dx = 0
         invDenom = 1 / (2 * math.sqrt(dx ** 2 + dy ** 2))
         two_dx_invDenom = 2 * dx * invDenom
 
         x, y = p1.x, p1.y
+
         self.intensify_pixel(p1, thickness, 0)
-        #
-        i = 1
-        self.intensify_pixel(x, y + i, thickness, i * two_dx_invDenom)
+        for sign in [-1, 1]:
+            for i in itertools.count():
+                if self.intensify_pixel(Point(x, y + i * sign), thickness, i * two_dx_invDenom) == 0:
+                    break
+
+        while x < p2.x:
+            x += 1
+            if d < 0:
+                two_v_dx = d + dx
+                d += dE
+            else:
+                two_v_dx = d - dx
+                d += dNE
+                y += 1
+
+            self.intensify_pixel(p1, thickness, 0)
+            for sign in [-1, 1]:
+                for i in itertools.count():
+                    if self.intensify_pixel(Point(x, y + i * sign), thickness,
+                                            i * two_dx_invDenom - two_v_dx * invDenom * sign) == 0:
+                        break
 
     def intensify_pixel(self, p: Point, thickness, distance):
         print(f"{p}. Distance: {distance}")
@@ -147,7 +172,9 @@ class Board:
         cov = self.coverage(thickness, abs(distance), r)
         print(f'Coverage: {cov}')
         if cov > 0:
-            color = "#%02x%02x%02x" % tuple([255 - int(cov * 255) for _ in range(3)])
+            rgb = ([255 - int(cov * 255) for _ in range(3)])
+            # print(rgb)
+            color = "#%02x%02x%02x" % tuple(rgb)
             self.try_create_pixel(p, color)
         return cov
 
@@ -155,7 +182,7 @@ class Board:
         w = thickness / 2
 
         if w >= r:
-            print("The line is thicker than the pixel")
+            # print("The line is thicker than the pixel")
             return self.cov(D - w, r) if w <= D else 1 - self.cov(w - D, r)
 
         if 0 <= D <= w:
@@ -167,8 +194,11 @@ class Board:
 
     @staticmethod
     def cov(d, r):
-        return 1 / math.pi * math.acos(d / r) - d / (math.pi * r ** 2) * math.sqrt(r ** 2 - d ** 2)
-        # return 2 * math.acos(d / r) / math.pi - d * math.sqrt(r ** 2 - d ** 2) / (2 * math.pi * r ** 2) if d <= r else 0
+        # Math domain errors
+        # a = math.acos(d / r)  # Math domain error 3.0
+        # b = math.sqrt(r ** 2 - d ** 2) # math domain error -2
+        return 1 / math.pi * math.acos(d / r) - d / (math.pi * r ** 2) * math.sqrt(
+            r ** 2 - d ** 2) if -1 <= d / r <= 1 and r ** 2 - d ** 2 > 0 else 0
 
     @staticmethod
     def rect_matrix(n):
@@ -197,6 +227,7 @@ class Board:
 
         while step > 0:
             idx = int(len(matrix) / 2)
+
             for i in range(len(matrix)):
                 for j in range(len(matrix[i])):
                     if matrix[i][j] != 0:
