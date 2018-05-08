@@ -25,7 +25,7 @@ class OctreeNode:
                     leafs.extend(self.children[i].get_leafs())
         return leafs
 
-    def insert(self, color, depth):
+    def add(self, color, depth):
         if depth == self.MAX_DEPTH or self.is_leaf:
             self.color += color
             self.pixels_count += 1
@@ -34,7 +34,7 @@ class OctreeNode:
             index = self.get_index_at_depth(color, depth)
             if not self.children[index]:
                 self.children[index] = OctreeNode(depth, self)
-            return self.children[index].insert(color, depth + 1)
+            return self.children[index].add(color, depth + 1)
 
     def find_leaf_for_color(self, color, depth):
         if self.is_leaf:

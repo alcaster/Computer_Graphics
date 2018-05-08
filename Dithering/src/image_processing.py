@@ -66,7 +66,6 @@ def ordered_dithering(img: np.ndarray, **kwargs):
                             result[row_index][col_index] = ranges[i]
                             break
         return result
-
     return img
 
 
@@ -104,7 +103,7 @@ def octree_color_quantization(img: np.ndarray, **kwargs):
 
     for i in tqdm(range(img.size[0]), desc="Adding colors"):
         for j in range(img.size[1]):
-            is_inserted = rootNode.insert(np.array(pixels[i, j]), 0)
+            is_inserted = rootNode.add(np.array(pixels[i, j]), 0)
             leafs_count += is_inserted
 
             while leafs_count > n:
@@ -113,7 +112,7 @@ def octree_color_quantization(img: np.ndarray, **kwargs):
                 toReduce = None
                 for l in leaves:
                     if l.depth == max_depth:
-                        if toReduce is None or len(l.parent.children) > len(toReduce.children):
+                        if toReduce is None or l.parent.depth > len(toReduce.children):
                             toReduce = l.parent
                 leafs_count -= toReduce.reduce_node()
 
