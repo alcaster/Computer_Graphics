@@ -1,12 +1,16 @@
+from collections import deque
+
+import numpy as np
 import math
 from copy import copy
 import tkinter as tk
+
 from utils.dataclasses import Point, Rectangle, EdgeBucket
 from utils.cohen_utils import compute_outcode, Outcodes
-from DrawingCanvas.utils.list_utils import arrange_points_by_yx
+from utils.list_utils import arrange_points_by_yx
 
-canvas_width = 400
-canvas_height = 400
+canvas_width = 600
+canvas_height = 600
 python_green = "#476042"
 
 
@@ -14,18 +18,49 @@ class Board:
     def __init__(self, master, canvas):
         self.points = []
         self.canvas = canvas
-        self.img = tk.PhotoImage(width=canvas_width, height=canvas_height)
+        # self.img = tk.PhotoImage(width=canvas_width, height=canvas_height)
+        self.img = tk.PhotoImage(file='export.png')
         self.canvas.create_image((canvas_width // 2, canvas_height // 2), image=self.img, state="normal")
 
         self.master = master
-        self.mode = self.cohen
+        self.mode = self.fill
         self.cohen_rectangle = None
         self.polygon = []
 
         canvas.bind("<Button-1>", self.paint)
         self.make_buttons()
 
+    def fill(self):
+        queue = deque()
+        used = np.zeros((canvas_height, canvas_width))
+        border, new_color_point, start = self.points[-3:]
+        border_color = self.img.get(border.x, border.y)
+        new_color = self.img.get(new_color_point.x, new_color_point.y)
+        border_color_hex = "#%02x%02x%02x" % tuple(border_color)
+        new_color_hex = "#%02x%02x%02x" % tuple(new_color)
+        
+        queue.append(start)
+        while queue:
+            pkt = queue.pop()
+            pkt_color = self.img.get(pkt.x, pkt.y)
+            if pkt_color != border_color:
+                self.img.put(border_color_hex, (pkt.x, pkt.y))
+            used[pkt.x, pkt.y] = 1
+            if pkt.x+1 < canvas_width and used[pkt.x + 1, pkt.y] == 0:
+                queue.append(Point(pkt.x + 1, pkt.y))
+            if pkt.x-1 >= 0 and used[pkt.x - 1, pkt.y] == 0:
+                queue.append(Point(pkt.x - 1, pkt.y))
+            if pkt.y+1 < canvas_height and used[pkt.x, pkt.y + 1] == 0:
+                queue.append(Point(pkt.x, pkt.y+1))
+            if pkt.y-1 >= 0 and used[pkt.x, pkt.y - 1] == 0:
+                queue.append(Point(pkt.x, pkt.y-1))
+
+    def set_mode(self, mode):
+        self.mode = mode
+
     def make_buttons(self):
+        button = tk.Button(master, text="Fill", command=lambda: self.set_mode(self.fill))
+        button.pack(side=tk.BOTTOM)
         button = tk.Button(master, text="Cohen-Sutherland", command=lambda: self.redraw(self.cohen))
         button.pack(side=tk.BOTTOM)
         button = tk.Button(master, text="Draw Poly", command=lambda: self.redraw(self.draw_poly))
@@ -47,6 +82,9 @@ class Board:
 
         if self.mode == self.cohen:
             if not len(self.points) % 2:
+                self.mode()
+        elif self.mode == self.fill:
+            if not len(self.points) % 3:
                 self.mode()
         else:
             self.mode()
@@ -176,7 +214,6 @@ class Board:
     @staticmethod
     def iterate(AET: [EdgeBucket]) -> [()]:
         return [(AET[idx], AET[idx + 1]) for idx in range(0, len(AET) - 1, 2)]
-
 
         # edge_point_pairs = [[a, b] for a, b in zip(self.polygon, self.polygon[1:])] + [
         #     [self.polygon[-1], self.polygon[0]]]
