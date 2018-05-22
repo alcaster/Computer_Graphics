@@ -34,17 +34,24 @@ class Board:
         queue = deque()
         used = np.zeros((canvas_height, canvas_width))
         border, new_color_point, start = self.points[-3:]
-        border_color = self.img.get(border.x, border.y)
+        # border_color = self.canvas[border.x, border.y]
+
+        print(self.img.get(start.x,start.y))
+        print(self.img.get(border.x,border.y))
+        print(self.img.get(new_color_point.x,new_color_point.y))
+        print(start)
+        print(border)
+        print(new_color_point)
+        return
         new_color = self.img.get(new_color_point.x, new_color_point.y)
         border_color_hex = "#%02x%02x%02x" % tuple(border_color)
         new_color_hex = "#%02x%02x%02x" % tuple(new_color)
-        
         queue.append(start)
         while queue:
             pkt = queue.pop()
             pkt_color = self.img.get(pkt.x, pkt.y)
             if pkt_color != border_color:
-                self.img.put(border_color_hex, (pkt.x, pkt.y))
+                self.img.put(new_color_hex, (pkt.x, pkt.y))
             used[pkt.x, pkt.y] = 1
             if pkt.x+1 < canvas_width and used[pkt.x + 1, pkt.y] == 0:
                 queue.append(Point(pkt.x + 1, pkt.y))
@@ -91,7 +98,8 @@ class Board:
 
     def try_create_pixel(self, p: Point, append: bool = False, color: str = '#ff0000'):
         if 0 < p.x < canvas_width and 0 < p.y < canvas_height:
-            y = self.canvas.winfo_reqheight() - p.y if self.mode in [self.vertex_sorting, self.draw_poly] else p.y
+            y = p.y
+            # y = self.canvas.winfo_reqheight() - p.y if self.mode in [self.vertex_sorting, self.draw_poly] else p.y
             self.img.put(color, (p.x, y))
             if append:
                 print(y)
