@@ -1,4 +1,4 @@
-from DrawingCanvas.utils.dataclasses import Point, Rectangle
+from utils.dataclasses import Point, Rectangle
 
 
 class Outcodes:

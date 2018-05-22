@@ -3,7 +3,7 @@ from copy import copy
 import tkinter as tk
 from utils.dataclasses import Point, Rectangle, EdgeBucket
 from utils.cohen_utils import compute_outcode, Outcodes
-from DrawingCanvas.utils.list_utils import arrange_points_by_yx
+from utils.list_utils import arrange_points_by_yx
 
 canvas_width = 400
 canvas_height = 400
@@ -134,7 +134,6 @@ class Board:
                 else:
                     p2 = p
                     outcode2 = compute_outcode(p2, clip)
-        print(f'Accept {accept}')
         if accept:
             self.DDA(p1, p2)
 
@@ -176,35 +175,6 @@ class Board:
     @staticmethod
     def iterate(AET: [EdgeBucket]) -> [()]:
         return [(AET[idx], AET[idx + 1]) for idx in range(0, len(AET) - 1, 2)]
-
-
-        # edge_point_pairs = [[a, b] for a, b in zip(self.polygon, self.polygon[1:])] + [
-        #     [self.polygon[-1], self.polygon[0]]]
-        #
-        # eet = defaultdict(list)
-        # for p1, p2 in edge_point_pairs:
-        #     px1, px2 = arrange_points_by_x([p1, p2])
-        #     py1, py2 = arrange_points_by_y([p1, p2])
-        #     eet[max(p1.y, p2.y)].append(
-        #         EdgeBucket(py2.y, px1.x, (py2.x - py1.x) / (py2.y - py1.y) if py2.y != py1.y else 0))
-        #
-        # eet = OrderedDict(sorted(eet.items(), key=lambda t: t[0]))
-        # y = list(eet.keys())[0]
-        # print(f'EET={eet}, y={y}')
-        # aet = []
-        # while eet or aet:
-        #     if y in eet:
-        #         aet.extend(eet[y])
-        #         eet.pop(y)
-        #     aet = sorted(aet, key=lambda t: t.x)
-        #     # print("aet len=",len(aet), "y=", y)
-        #     for x_start, x_end in [list(i) for i in zip(aet[0::2], aet[1::2])]:
-        #         self.DDA(Point(x_start.x, y), Point(x_end.x, y))
-        #     y += 1
-        #     aet = [e for e in aet if not e.y_max == y and not (e.y_max == y - 1 and
-        #                                                        e.inverse_m == 0)]
-        #     for e in aet:
-        #         e.x += e.inverse_m
 
     def draw_poly(self):
         if self.polygon:
